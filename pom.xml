@@ -76,14 +76,20 @@
             <name>Jeanfrancois Arcand</name>
             <email>jfarcand@java.net</email>
             <url>http://weblogs.java.net/blog/jfarcand/</url>
-            <organization>SUN Microsystems</organization>
-            <organizationUrl>http://www.sun.com</organizationUrl>
         </developer>
         <developer>
             <id>oleksiys</id>
             <name>Oleksiy Stashok</name>
             <email>oleksiys@java.net</email>
             <url>http://blogs.sun.com/oleksiys/</url>
+            <organization>Oracle Corporation</organization>
+            <organizationUrl>http://www.oracle.com</organizationUrl>
+        </developer>
+        <developer>
+            <id>rlubke</id>
+            <name>Ryan Lubke</name>
+            <email>rlubke@java.net</email>
+            <url>http://blogs.sun.com/rlubke</url>
             <organization>Oracle Corporation</organization>
             <organizationUrl>http://www.oracle.com</organizationUrl>
         </developer>
