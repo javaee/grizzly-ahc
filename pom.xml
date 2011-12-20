@@ -398,7 +398,7 @@
         <maven.compiler.argument>
             -Xlint:unchecked,deprecation,fallthrough,finally,cast,dep-ann,empty,overrides
         </maven.compiler.argument>
-        <grizzly.version>2.2-SNAPSHOT</grizzly.version>
+        <grizzly.version>2.2</grizzly.version>
         <ahc.version>1.7.0-SNAPSHOT</ahc.version>
         <sl4j.version>1.6.2</sl4j.version>
     </properties>
