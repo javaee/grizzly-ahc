@@ -3,7 +3,7 @@
 
     DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 
-    Copyright (c) 2011 Oracle and/or its affiliates. All rights reserved.
+    Copyright (c) 2011-2012 Oracle and/or its affiliates. All rights reserved.
 
     The contents of this file are subject to the terms of either the GNU
     General Public License Version 2 only ("GPL") or the Common Development
@@ -306,7 +306,7 @@
         <maven.compiler.argument>
             -Xlint:unchecked,deprecation,fallthrough,finally,cast,dep-ann,empty,overrides
         </maven.compiler.argument>
-        <grizzly.version>2.2</grizzly.version>
+        <grizzly.version>2.2.1</grizzly.version>
         <ahc.version>1.7.0-RC1</ahc.version>
         <sl4j.version>1.6.2</sl4j.version>
     </properties>
