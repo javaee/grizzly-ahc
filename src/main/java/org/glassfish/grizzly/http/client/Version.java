@@ -37,12 +37,20 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.http.client;
+package org.glassfish.grizzly.http.client;
 
 /**
  * VERSION.
  */
 public class Version {
+
+    /**
+     * Major Version.
+     */
     public static final int MAJOR_VERSION = 1;
+
+    /**
+     * Minor Version.
+     */
     public static final int MINOR_VERSION = 0;
 }
