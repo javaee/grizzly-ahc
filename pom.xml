@@ -213,6 +213,7 @@
                             !com.ning.http.client.providers.netty.netty4,
                             !org.jboss.*,
                             !org.apache.*,
+                            org.glassfish.grizzly.http.client.*;
                             com.ning.http.*;-split-package:=merge-first
                         </Export-Package>
                     </instructions>
