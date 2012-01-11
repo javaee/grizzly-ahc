@@ -52,7 +52,7 @@
     <artifactId>grizzly-http-client</artifactId>
     <packaging>jar</packaging>
     <name>Grizzly Async HTTP Client</name>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
     <url>http://grizzly.java.net</url>
     <issueManagement>
         <system>JIRA</system>
