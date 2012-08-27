@@ -52,7 +52,7 @@
     <artifactId>grizzly-http-client</artifactId>
     <packaging>jar</packaging>
     <name>Grizzly Async HTTP Client</name>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.2-SNAPSHOT</version>
     <url>http://grizzly.java.net</url>
     <issueManagement>
         <system>JIRA</system>
@@ -305,8 +305,8 @@
         <maven.compiler.argument>
             -Xlint:unchecked,deprecation,fallthrough,finally,cast,dep-ann,empty,overrides
         </maven.compiler.argument>
-        <grizzly.version>2.2.1</grizzly.version>
-        <ahc.version>1.7.0</ahc.version>
+        <grizzly.version>2.2.16</grizzly.version>
+        <ahc.version>1.7.5</ahc.version>
         <sl4j.version>1.6.2</sl4j.version>
     </properties>
 </project>
