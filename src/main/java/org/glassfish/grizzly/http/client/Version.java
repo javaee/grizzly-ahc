@@ -52,5 +52,5 @@ public class Version {
     /**
      * Minor Version.
      */
-    public static final int MINOR_VERSION = 7;
+    public static final int MINOR_VERSION = 8;
 }
