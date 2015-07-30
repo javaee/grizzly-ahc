@@ -45,7 +45,7 @@
     <parent>
         <groupId>net.java</groupId>
         <artifactId>jvnet-parent</artifactId>
-        <version>1</version>
+        <version>5</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.glassfish.grizzly</groupId>
@@ -152,11 +152,6 @@
                 <version>2.0.6</version>
             </plugin>
             <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-maven-plugin</artifactId>
-                <version>2.0.6</version>
-            </plugin>
-            <plugin>
                 <inherited>true</inherited>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
@@ -214,14 +209,12 @@
                             *
                         </Import-Package>
                         <Export-Package>
-                            !com.ning.http.client.providers.jdk,
-                            !com.ning.http.client.providers.apache,
-                            !com.ning.http.client.providers.netty,
-                            !com.ning.http.client.providers.netty.spnego,
-                            !com.ning.http.client.providers.netty.netty4,
+                            !com.ning.http.client.providers.jdk.*,
+                            !com.ning.http.client.providers.apache.*,
+                            !com.ning.http.client.providers.netty.*,
                             !org.jboss.*,
                             !org.apache.*,
-                            org.glassfish.grizzly.http.client.*;
+                            org.glassfish.grizzly.http.client*;
                             com.ning.http.*;-split-package:=merge-first
                         </Export-Package>
                     </instructions>
@@ -316,8 +309,8 @@
         <maven.compiler.argument>
             -Xlint:unchecked,deprecation,fallthrough,finally,cast,dep-ann,empty,overrides
         </maven.compiler.argument>
-        <grizzly.version>2.3.14</grizzly.version>
-        <ahc.version>1.8.11</ahc.version>
+        <grizzly.version>2.3.21</grizzly.version>
+        <ahc.version>1.9.30</ahc.version>
         <sl4j.version>1.6.2</sl4j.version>
     </properties>
 </project>
