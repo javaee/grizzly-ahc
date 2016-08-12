@@ -28,7 +28,7 @@ limitations under the License.
     <artifactId>grizzly-http-client</artifactId>
     <packaging>jar</packaging>
     <name>Grizzly Async HTTP Client</name>
-    <version>1.11-SNAPSHOT</version>
+    <version>1.11</version>
     <url>http://grizzly.java.net</url>
     <issueManagement>
         <system>JIRA</system>
@@ -80,7 +80,7 @@ limitations under the License.
             scm:git:ssh://${user.name}@git.java.net/grizzly~ahc
         </developerConnection>
         <url>http://java.net/projects/grizzly/sources/git/show</url>
-      <tag>HEAD</tag>
+      <tag>1_11</tag>
   </scm>
     <organization>
         <name>Oracle Corporation</name>
