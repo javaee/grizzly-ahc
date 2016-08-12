@@ -285,7 +285,7 @@ limitations under the License.
             -Xlint:unchecked,deprecation,fallthrough,finally,cast,dep-ann,empty,overrides
         </maven.compiler.argument>
         <grizzly.version>2.3.26</grizzly.version>
-        <ahc.version>1.9.38</ahc.version>
+        <ahc.version>1.9.39</ahc.version>
         <sl4j.version>1.6.2</sl4j.version>
     </properties>
 </project>
