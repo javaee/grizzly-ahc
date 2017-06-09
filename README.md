@@ -1,15 +1,13 @@
 Async Http Client
 -----------------
 
-Getting started [HTML](http://sonatype.github.com/async-http-client/) [PDF](http://is.gd/kexrN)
-
-Async Http Client library purpose is to allow Java applications to easily execute HTTP requests and asynchronously process the HTTP responses. The library also supports the WebSocket Protocol. The Async HTTP Client library is simple to use. First, in order to add it to your Maven project, simply add this dependency:
+The Grizzly Async Http Client (GAHC) library purpose is to allow Java applications to easily execute HTTP requests and asynchronously process the HTTP responses. The library also supports the WebSocket Protocol. The Async HTTP Client library is simple to use. First, in order to add it to your Maven project, simply add this dependency:
 
 ```xml
          <dependency>
-             <groupId>com.ning</groupId>
-             <artifactId>async-http-client</artifactId>
-             <version>1.7.3</version>
+             <groupId>org.glassfish.grizzly</groupId>
+             <artifactId>grizzly-http-client</artifactId>
+             <version>1.11</version>
          </dependency>
 ```
 
@@ -159,16 +157,8 @@ Async Http Client also support WebSocket by simply doing:
                 }).build()).get();
 ```
 
-The library uses Java non blocking I/O for supporting asynchronous operations. The default asynchronous provider is build on top of [Netty](http://www.jboss.org/netty), but the library exposes a configurable provider SPI which allows to easily plug in other frameworks like [Grizzly](http://grizzly.java.net)
+Keep up to date on the library development by joining the Grizzly discussion group
 
-```java
-       AsyncHttpClientConfig config = new AsyncHttpClientConfig.Builder().build();
-       AsyncHttpClient client = new AsyncHttpClient(new GrizzlyAsyncHttpProvider(config), config);
-```
+[Grizzly Discussion Group](https://javaee.groups.io/g/grizzly).
 
-Keep up to date on the library development by joining the Asynchronous HTTP Client discussion group
-
-[Google Group](http://groups.google.com/group/asynchttpclient)
-
-or follow us on [Twitter](http://twitter.com/jfarcand)
-
+This code has been forked from the original AHC 1.9.x branch.
