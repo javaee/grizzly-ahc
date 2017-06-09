@@ -35,7 +35,6 @@ import com.ning.http.client.filter.FilterContext;
 import com.ning.http.client.filter.FilterException;
 import com.ning.http.client.filter.RequestFilter;
 import com.ning.http.client.multipart.Part;
-import com.ning.http.client.providers.jdk.JDKAsyncHttpProvider;
 import com.ning.http.client.resumable.ResumableAsyncHandler;
 
 /**
@@ -146,7 +145,7 @@ import com.ning.http.client.resumable.ResumableAsyncHandler;
  */
 public class AsyncHttpClient implements Closeable {
 
-    private final static String DEFAULT_PROVIDER = "com.ning.http.client.providers.netty.NettyAsyncHttpProvider";
+    private final static String DEFAULT_PROVIDER = "com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider";
     private final AsyncHttpProvider httpProvider;
     private final AsyncHttpClientConfig config;
     private final static Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
@@ -161,7 +160,7 @@ public class AsyncHttpClient implements Closeable {
 
     /**
      * Create a new HTTP Asynchronous Client using the default {@link AsyncHttpClientConfig} configuration. The
-     * default {@link AsyncHttpProvider} will be used ({@link com.ning.http.client.providers.netty.NettyAsyncHttpProvider}
+     * default {@link AsyncHttpProvider} will be used ({@link com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider}
      */
     public AsyncHttpClient() {
         this(new AsyncHttpClientConfig.Builder().build());
@@ -584,11 +583,7 @@ public class AsyncHttpClient implements Closeable {
             } catch (Throwable t2) {
             }
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("Default provider not found {}. Using the {}", DEFAULT_PROVIDER,
-                        JDKAsyncHttpProvider.class.getName());
-            }
-            return new JDKAsyncHttpProvider(config);
+            throw new IllegalStateException("No provider found!");
         }
     }
 

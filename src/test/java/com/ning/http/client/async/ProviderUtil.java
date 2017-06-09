@@ -18,31 +18,14 @@ package com.ning.http.client.async;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
-import com.ning.http.client.providers.jdk.JDKAsyncHttpProvider;
 
 public class ProviderUtil {
-
-    public static AsyncHttpClient nettyProvider(AsyncHttpClientConfig config) {
-        if (config == null) {
-            return new AsyncHttpClient();
-        } else {
-            return new AsyncHttpClient(config);
-        }
-    }
 
     public static AsyncHttpClient grizzlyProvider(AsyncHttpClientConfig config) {
         if (config == null) {
             config = new AsyncHttpClientConfig.Builder().build();
         }
         return new AsyncHttpClient(new GrizzlyAsyncHttpProvider(config), config);
-    }
-
-    public static AsyncHttpClient jdkProvider(AsyncHttpClientConfig config) {
-        if (config == null) {
-            return new AsyncHttpClient(new JDKAsyncHttpProvider(new AsyncHttpClientConfig.Builder().build()));
-        } else {
-            return new AsyncHttpClient(new JDKAsyncHttpProvider(config));
-        }
     }
 
 }

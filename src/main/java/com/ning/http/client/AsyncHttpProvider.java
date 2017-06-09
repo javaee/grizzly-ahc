@@ -17,7 +17,7 @@ package com.ning.http.client;
 
 /**
  * Interface to be used when implementing custom asynchronous I/O HTTP client.
- * By default, the {@link com.ning.http.client.providers.netty.NettyAsyncHttpProvider} is used.
+ * By default, the {@link com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider} is used.
  */
 public interface AsyncHttpProvider {
 
