@@ -76,6 +76,7 @@ public final class HttpTransactionContext {
     ProtocolHandler protocolHandler;
     WebSocket webSocket;
     boolean establishingTunnel;
+    boolean skipCleanup;
     
     // don't recycle the context, don't return associated connection to
     // the pool
@@ -278,8 +279,10 @@ public final class HttpTransactionContext {
     }
     
     private void cleanup(final HttpContext httpCtx) {
-        httpCtx.getCloseable().removeCloseListener(listener);
-        REQUEST_STATE_ATTR.remove(httpCtx);
+        if (!skipCleanup) {
+            httpCtx.getCloseable().removeCloseListener(listener);
+            REQUEST_STATE_ATTR.remove(httpCtx);
+        }
     }
     
     @SuppressWarnings("unchecked")

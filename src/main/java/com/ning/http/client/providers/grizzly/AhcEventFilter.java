@@ -560,7 +560,7 @@ final class AhcEventFilter extends HttpClientFilter {
                 final Request nextRequest = new RequestBuilder(req)
                         .setRealm(newRealm)
                         .build();
-                
+                httpTransactionContext.skipCleanup = true;
                 final HttpTransactionContext newContext
                         = httpTransactionContext.cloneAndStartTransactionFor(
                                 c, nextRequest);
