@@ -90,7 +90,7 @@ public final class HttpTransactionContext {
     private final CloseListener listener = new CloseListener<Closeable, CloseType>() {
         @Override
         public void onClosed(Closeable closeable, CloseType type) throws IOException {
-            if (isGracefullyFinishResponseOnClose()) {
+            if (isGracefullyFinishResponseOnClose() || isKeepAliveDisabled()) {
                 // Connection was closed.
                 // This event is fired only for responses, which don't have
                 // associated transfer-encoding or content-length.
@@ -112,6 +112,7 @@ public final class HttpTransactionContext {
     };
 
     // -------------------------------------------------------- Static methods
+
     static void bind(final HttpContext httpCtx,
             final HttpTransactionContext httpTxContext) {
         httpCtx.getCloseable().addCloseListener(httpTxContext.listener);
@@ -251,6 +252,14 @@ public final class HttpTransactionContext {
 
     void closeConnection() {
         connection.closeSilently();
+    }
+
+    void keepAliveDisabled() {
+        connection.getAttributes().setAttribute("keep-alive-disabled", Boolean.TRUE);
+    }
+
+    boolean isKeepAliveDisabled() {
+        return Boolean.TRUE.equals(connection.getAttributes().getAttribute("keep-alive-disabled"));
     }
 
     private void scheduleCleanup(final HttpContext httpCtx,
