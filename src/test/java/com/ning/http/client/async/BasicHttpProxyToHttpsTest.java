@@ -13,6 +13,8 @@
  */
 package com.ning.http.client.async;
 
+import static com.ning.http.client.async.BasicHttpsTest.createSSLContext;
+
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.ProxyServer;
@@ -29,12 +31,14 @@ import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.server.handler.ConnectHandler;
@@ -42,6 +46,7 @@ import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.server.ssl.SslSocketConnector;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -55,8 +60,22 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
 
     @AfterClass(alwaysRun = true)
     public void tearDownGlobal() throws Exception {
-        server.stop();
-        server2.stop();
+        try {
+            server.stop();
+        } catch (Exception e) {
+            // Nothing to do
+        }
+        try
+        {
+            server2.stop();
+        } catch (Exception e) {
+            // Nothing to do
+        }
+    }
+
+    @AfterMethod(alwaysRun = true)
+    public void tearDownProps() throws Exception {
+        System.clearProperty("javax.net.ssl.keyStore");
     }
 
     @BeforeClass(alwaysRun = true)
@@ -83,6 +102,7 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
         connector.setPort(port2);
 
         ClassLoader cl = getClass().getClassLoader();
+
         // override system properties
         URL keystoreUrl = cl.getResource("ssltest-keystore.jks");
         String keyStoreFile = new File(keystoreUrl.toURI()).getAbsolutePath();
@@ -93,35 +113,39 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
         log.info("SSL keystore path: {}", keyStoreFile);
 
         server2.addConnector(connector);
-        server2.setHandler(new EchoHandler());
+        server2.setHandler(new AuthenticateHandler(new EchoHandler()));
         server2.start();
         log.info("Local Proxy Server (" + port1 + "), HTTPS Server (" + port2 + ") started successfully");
     }
 
     @Override
     public AbstractHandler configureHandler() throws Exception {
-        return new ConnectHandler(new EchoHandler()) {
-            @Override
-            protected boolean handleAuthentication(HttpServletRequest request, HttpServletResponse response, String address) throws ServletException, IOException {
-                String authorization = request.getHeader("Proxy-Authorization");
-                if (authorization == null) {
-                    response.setStatus(HttpServletResponse.SC_PROXY_AUTHENTICATION_REQUIRED);
-                    response.setHeader("Proxy-Authenticate", "Basic realm=\"Fake Realm\"");
-                    return false;
-                } else if (authorization
-                        .equals("Basic am9obmRvZTpwYXNz")) {
-                    return true;
-                }
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return false;
-            }
-        };
+        return new ProxyConnectHTTPHandler(new EchoHandler());
+    }
+
+    @Test
+    public void httpProxyToHttpsUsePreemptiveTargetTest() throws IOException, InterruptedException, ExecutionException, NoSuchAlgorithmException {
+        doTest(true);
     }
 
     @Test
     public void httpProxyToHttpsTargetTest() throws IOException, InterruptedException, ExecutionException, NoSuchAlgorithmException {
-        try (AsyncHttpClient client = getAsyncHttpClient(new AsyncHttpClientConfig.Builder().setAcceptAnyCertificate(true).build())) {
-            Request request = new RequestBuilder("GET").setProxyServer(basicProxy()).setUrl(getTargetUrl2()).setRealm(new Realm.RealmBuilder().setPrincipal("user").setPassword("passwd").build()).build();
+        doTest(false);
+    }
+
+    private void doTest(boolean usePreemptiveAuth) throws UnknownHostException, InterruptedException, ExecutionException
+    {
+        try (AsyncHttpClient client = getAsyncHttpClient(new AsyncHttpClientConfig.Builder().setSSLContext(createSSLContext(new AtomicBoolean(true))).build())) {
+            Request request = new RequestBuilder("GET")
+                .setProxyServer(basicProxy())
+                .setUrl(getTargetUrl2())
+                .setRealm(new Realm.RealmBuilder()
+                              .setPrincipal("user")
+                              .setPassword("passwd")
+                              .setScheme(AuthScheme.BASIC)
+                              .setUsePreemptiveAuth(usePreemptiveAuth)
+                              .build())
+                .build();
             Future<Response> responseFuture = client.executeRequest(request);
             Response response = responseFuture.get();
             Assert.assertEquals(response.getStatusCode(), HttpServletResponse.SC_OK);
@@ -134,4 +158,86 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
         proxyServer.setScheme(AuthScheme.BASIC);
         return proxyServer;
     }
+
+    private static class ProxyConnectHTTPHandler extends ConnectHandler {
+
+        public ProxyConnectHTTPHandler(Handler handler) {
+            super(handler);
+        }
+
+        @Override
+        protected boolean handleAuthentication(HttpServletRequest request, HttpServletResponse response, String address) throws ServletException, IOException
+        {
+            return true;
+        }
+
+        /**
+         * Override this method do to the {@link ConnectHandler#handleConnect(org.eclipse.jetty.server.Request, HttpServletRequest, HttpServletResponse, String)} doesn't allow me to generate a response with
+         * {@link HttpServletResponse#SC_PROXY_AUTHENTICATION_REQUIRED} neither {@link HttpServletResponse#SC_UNAUTHORIZED}.
+         */
+        @Override
+        protected void handleConnect(org.eclipse.jetty.server.Request baseRequest, HttpServletRequest request, HttpServletResponse response, String serverAddress) throws ServletException, IOException
+        {
+            if (!this.doHandleAuthentication(baseRequest, response)) {
+                return;
+            }
+            // Just call super class method to establish the tunnel and avoid copy/paste.
+            super.handleConnect(baseRequest, request, response, serverAddress);
+        }
+
+        public boolean doHandleAuthentication(org.eclipse.jetty.server.Request request, HttpServletResponse httpResponse) throws IOException, ServletException {
+            boolean result = false;
+            if ("CONNECT".equals(request.getMethod())) {
+                String authorization = request.getHeader("Proxy-Authorization");
+                if (authorization == null) {
+                    httpResponse.setStatus(HttpServletResponse.SC_PROXY_AUTHENTICATION_REQUIRED);
+                    httpResponse.setHeader("Proxy-Authenticate", "Basic realm=\"Fake Realm\"");
+                    result = false;
+                } else if (authorization
+                    .equals("Basic am9obmRvZTpwYXNz")) {
+                    httpResponse.setStatus(HttpServletResponse.SC_OK, "Connection established");
+                    result = true;
+                } else {
+                    httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    httpResponse.getOutputStream().flush();
+                    httpResponse.getOutputStream().close();
+                    result = false;
+                }
+                httpResponse.getOutputStream().flush();
+                httpResponse.getOutputStream().close();
+                request.setHandled(true);
+            }
+            return result;
+        }
+    }
+
+    private static class AuthenticateHandler extends AbstractHandler {
+
+        private Handler target;
+
+        public AuthenticateHandler(Handler target) {
+            this.target = target;
+        }
+
+        @Override
+        public void handle(String pathInContext, org.eclipse.jetty.server.Request request, HttpServletRequest httpRequest,
+                           HttpServletResponse httpResponse) throws IOException, ServletException {
+            String authorization = httpRequest.getHeader("Authorization");
+            if (authorization != null && authorization.equals("Basic dXNlcjpwYXNzd2Q="))
+            {
+                httpResponse.addHeader("target", request.getUri().toString());
+                target.handle(pathInContext, request, httpRequest, httpResponse);
+            }
+            else
+            {
+                httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                httpResponse.setHeader("www-authenticate", "Basic realm=\"Fake Realm\"");
+                httpResponse.getOutputStream().flush();
+                httpResponse.getOutputStream().close();
+                request.setHandled(true);
+            }
+
+        }
+    }
+
 }
