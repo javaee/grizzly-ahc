@@ -228,7 +228,6 @@ final class AsyncHttpClientFilter extends BaseFilter {
         addServiceHeaders(requestPacket);
         
         final Realm realm = getRealm(request);
-        addAuthorizationHeader(request, requestPacket, realm, uri, proxy, false);
         addProxyHeaders(request, requestPacket, realm, proxy, false, true);
         
         // turn off SSL, because CONNECT will be sent in plain mode

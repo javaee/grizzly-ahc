@@ -13,11 +13,12 @@
  */
 package com.ning.http.client.async;
 
+import static com.ning.http.client.Realm.AuthScheme.BASIC;
+
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.ProxyServer;
 import com.ning.http.client.Realm;
-import com.ning.http.client.Realm.AuthScheme;
 import com.ning.http.client.Request;
 import com.ning.http.client.RequestBuilder;
 import com.ning.http.client.Response;
@@ -52,18 +53,20 @@ public abstract class BasicHttpProxyToHttpTest extends AbstractBasicTest {
 
         @Override
         public void handle(String pathInContext, org.eclipse.jetty.server.Request request, HttpServletRequest httpRequest,
-                HttpServletResponse httpResponse) throws IOException, ServletException {
+                           HttpServletResponse httpResponse) throws IOException, ServletException {
 
-            String authorization = httpRequest.getHeader("Proxy-Authorization");
-            if (authorization == null) {
+            String authorization = httpRequest.getHeader("Authorization");
+            String proxyAuthorization = httpRequest.getHeader("Proxy-Authorization");
+            if (proxyAuthorization == null) {
                 httpResponse.setStatus(HttpServletResponse.SC_PROXY_AUTHENTICATION_REQUIRED);
                 httpResponse.setHeader("Proxy-Authenticate", "Basic realm=\"Fake Realm\"");
-            } else if (authorization
-                    .equals("Basic am9obmRvZTpwYXNz")) {
+            } else if (proxyAuthorization
+                .equals("Basic am9obmRvZTpwYXNz") && authorization != null && authorization.equals("Basic dXNlcjpwYXNzd2Q=")) {
                 httpResponse.addHeader("target", request.getUri().toString());
                 httpResponse.setStatus(HttpServletResponse.SC_OK);
             } else {
                 httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                httpResponse.setHeader("www-authenticate", "Basic realm=\"Fake Realm\"");
             }
             httpResponse.getOutputStream().flush();
             httpResponse.getOutputStream().close();
@@ -104,7 +107,7 @@ public abstract class BasicHttpProxyToHttpTest extends AbstractBasicTest {
         server2.addConnector(listener);
         server2.setHandler(configureHandler());
         server2.start();
-        log.info("Local HTTP Server (" + port1 + "), HTTPS Server (" + port2 + ") started successfully");
+        log.info("Local HTTP Server (" + port1 + "), Proxy HTTP Server (" + port2 + ") started successfully");
     }
 
 
@@ -114,9 +117,20 @@ public abstract class BasicHttpProxyToHttpTest extends AbstractBasicTest {
     }
 
     @Test
+    public void httpProxyToHttpTargetUsePreemptiveAuthTest() throws IOException, InterruptedException, ExecutionException {
+        doTest(true);
+    }
+
+    @Test
     public void httpProxyToHttpTargetTest() throws IOException, InterruptedException, ExecutionException {
+        doTest(false);
+    }
+
+    private void doTest(boolean usePreemptiveAuth) throws UnknownHostException, InterruptedException, ExecutionException
+    {
         try (AsyncHttpClient client = getAsyncHttpClient(new AsyncHttpClientConfig.Builder().build())) {
-            Request request = new RequestBuilder("GET").setProxyServer(basicProxy()).setUrl(getTargetUrl()).setRealm(new Realm.RealmBuilder().setPrincipal("user").setPassword("passwd").build()).build();
+            Request request = new RequestBuilder("GET").setProxyServer(basicProxy()).setUrl(getTargetUrl()).setRealm(
+                new Realm.RealmBuilder().setPrincipal("user").setPassword("passwd").setScheme(BASIC).setUsePreemptiveAuth(usePreemptiveAuth).build()).build();
             Future<Response> responseFuture = client.executeRequest(request);
             Response response = responseFuture.get();
             Assert.assertEquals(response.getStatusCode(), HttpServletResponse.SC_OK);
@@ -126,7 +140,7 @@ public abstract class BasicHttpProxyToHttpTest extends AbstractBasicTest {
 
     private ProxyServer basicProxy() throws UnknownHostException {
         ProxyServer proxyServer = new ProxyServer("127.0.0.1", port2, "johndoe", "pass");
-        proxyServer.setScheme(AuthScheme.BASIC);
+        proxyServer.setScheme(BASIC);
         return proxyServer;
     }
 }
