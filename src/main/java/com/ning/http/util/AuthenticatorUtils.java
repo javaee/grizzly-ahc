@@ -105,8 +105,10 @@ public final class AuthenticatorUtils {
             String ntlmHeader = getNTLM(auth);
             if (ntlmHeader != null) {
                 proxyAuthorization = ntlmHeader;
+            } else {
+                String msg = NTLMEngine.INSTANCE.generateType1Msg();
+                proxyAuthorization = "NTLM " + msg;                
             }
-
         } else if (proxyServer != null && proxyServer.getPrincipal() != null && isNonEmpty(proxyServer.getNtlmDomain())) {
             List<String> auth = request.getHeaders().get(PROXY_AUTH_HEADER);
             if (getNTLM(auth) == null) {

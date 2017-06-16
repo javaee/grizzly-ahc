@@ -276,7 +276,10 @@ final class AhcEventFilter extends HttpClientFilter {
         
         final HttpTransactionContext context =
                 HttpTransactionContext.currentTransaction(httpHeader);
-        if (context.establishingTunnel) {
+        final HttpResponsePacket responsePacket = (HttpResponsePacket) httpHeader;
+        final int statusCode = responsePacket.getStatus();
+
+        if (context.establishingTunnel && !HttpStatus.PROXY_AUTHENTICATION_REQUIRED_407.statusMatches(statusCode) ) {
             // finish request/response processing, because Grizzly itself
             // treats CONNECT traffic as part of request-response processing
             // and we don't want it be treated like that
