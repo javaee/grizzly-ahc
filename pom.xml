@@ -284,9 +284,6 @@
                         </Bundle-Version>
                         <Bundle-Vendor>Sonatype</Bundle-Vendor>
                         <Import-Package>
-                            org.jboss.netty.*;resolution:=optional,
-                            org.apache.commons.httpclient;resolution:=optional,
-                            org.apache.commons.httpclient.*;resolution:=optional,
                             *
                         </Import-Package>
                         <Export-Package>
