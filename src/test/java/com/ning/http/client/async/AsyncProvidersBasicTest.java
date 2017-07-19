@@ -1512,5 +1512,30 @@ public abstract class AsyncProvidersBasicTest extends AbstractBasicTest {
         }
     }
 
+    @Test(groups = {"standalone", "default_provider", "async"})
+    public void asyncResponseWithUpgradeAndContentTest() throws Throwable {
+        try (AsyncHttpClient client = getAsyncHttpClient(null)) {
+            final CountDownLatch l = new CountDownLatch(1);
+            FluentCaseInsensitiveStringsMap h = new FluentCaseInsensitiveStringsMap();
+            h.add("Y-Upgrade", "h2,h2c");
+            client.prepareGet(getTargetUrl()).setHeaders(h).execute(new AsyncCompletionHandlerAdapter() {
+
+                @Override
+                public Response onCompleted(Response response) throws Exception {
+                    try {
+                        assertEquals(response.getStatusCode(), 200);
+                        assertEquals(response.getHeader("Upgrade"), "h2,h2c");
+                    } finally {
+                        l.countDown();
+                    }
+                    return response;
+                }
+            }).get();
+            if (!l.await(TIMEOUT, TimeUnit.SECONDS)) {
+                Assert.fail("Timeout out");
+            }
+        }
+    }
+
     protected abstract AsyncHttpProviderConfig<?, ?> getProviderConfig();
 }

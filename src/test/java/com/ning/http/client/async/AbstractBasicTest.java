@@ -92,7 +92,11 @@ public abstract class AbstractBasicTest {
                     httpResponse.sendRedirect(httpRequest.getHeader("X-redirect"));
                     return;
                 }
-                httpResponse.addHeader("X-" + param, httpRequest.getHeader(param));
+                if (param.startsWith("Y-")) {
+                    httpResponse.addHeader(param.substring(2), httpRequest.getHeader(param));
+                } else {
+                    httpResponse.addHeader("X-" + param, httpRequest.getHeader(param));
+                }
             }
 
             Enumeration<?> i = httpRequest.getParameterNames();

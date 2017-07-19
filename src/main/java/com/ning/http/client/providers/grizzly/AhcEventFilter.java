@@ -92,6 +92,12 @@ final class AhcEventFilter extends HttpClientFilter {
 
     // --------------------------------------- Methods from HttpClientFilter
 
+
+    @Override
+    protected void onIncomingUpgrade(final FilterChainContext ctx, final HttpHeader httpHeader) {
+        // no-op
+    }
+
     @Override
     public NextAction handleEvent(final FilterChainContext ctx,
             final FilterChainEvent event) throws IOException {
