@@ -23,6 +23,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -38,7 +39,6 @@ import org.glassfish.grizzly.connectionpool.MultiEndpointPool;
 import org.glassfish.grizzly.connectionpool.SingleEndpointPool;
 import org.glassfish.grizzly.nio.transport.TCPNIOConnectorHandler;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
-import org.glassfish.grizzly.utils.DataStructures;
 import org.glassfish.grizzly.utils.Exceptions;
 
 /**
@@ -59,7 +59,7 @@ class ConnectionManager {
     private final AsyncHttpClientConfig config;
     private final boolean poolingSSLConnections;
     private final Map<String, Endpoint> endpointMap =
-            DataStructures.<String, Endpoint>getConcurrentMap();
+            new ConcurrentHashMap<String,Endpoint>();
 
     // -------------------------------------------------------- Constructors
     ConnectionManager(final GrizzlyAsyncHttpProvider provider,
