@@ -7,7 +7,7 @@ The Grizzly Async Http Client (GAHC) library purpose is to allow Java applicatio
          <dependency>
              <groupId>org.glassfish.grizzly</groupId>
              <artifactId>grizzly-http-client</artifactId>
-             <version>1.12</version>
+             <version>1.13</version>
          </dependency>
 ```
 
