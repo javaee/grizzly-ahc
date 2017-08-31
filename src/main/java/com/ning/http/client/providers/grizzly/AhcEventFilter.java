@@ -738,7 +738,9 @@ final class AhcEventFilter extends HttpClientFilter {
                     final ConnectionManager m = provider.getConnectionManager();
                     c = m.openSync(nextRequest);
                 }
-                
+
+                httpTransactionContext.skipCleanup = true;
+
                 final HttpTransactionContext newContext =
                         httpTransactionContext.cloneAndStartTransactionFor(
                                 c, nextRequest);
