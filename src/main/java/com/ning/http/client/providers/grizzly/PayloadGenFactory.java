@@ -38,6 +38,7 @@ import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.memory.Buffers;
 import org.glassfish.grizzly.memory.MemoryManager;
 import org.glassfish.grizzly.utils.Charsets;
+import sun.misc.IOUtils;
 
 import static com.ning.http.client.providers.grizzly.PayloadGenerator.MAX_CHUNK_SIZE;
 import static com.ning.http.util.MiscUtils.isNonEmpty;
@@ -480,52 +481,60 @@ final class PayloadGenFactory {
                              final Request request,
                              final HttpRequestPacket requestPacket)
         throws IOException {
-
+            Body bodyLocal = null;
             final BodyGenerator generator = request.getBodyGenerator();
-            final Body bodyLocal = generator.createBody();
-            final long len = bodyLocal.getContentLength();
-            if (len >= 0) {
-                requestPacket.setContentLengthLong(len);
-            } else {
-                requestPacket.setChunked(true);
-            }
 
-            final MemoryManager mm = ctx.getMemoryManager();
-            boolean last = false;
-
-            while (!last) {
-                Buffer buffer = mm.allocate(MAX_CHUNK_SIZE);
-                buffer.allowBufferDispose(true);
-                
-                final long readBytes = bodyLocal.read(buffer.toByteBuffer());
-                if (readBytes > 0) {
-                    buffer.position((int) readBytes);
-                    buffer.trim();
+            try {
+                bodyLocal = generator.createBody();
+                final long len = bodyLocal.getContentLength();
+                if (len >= 0) {
+                    requestPacket.setContentLengthLong(len);
                 } else {
-                    buffer.dispose();
-                    
-                    if (readBytes < 0) {
-                        last = true;
-                        buffer = Buffers.EMPTY_BUFFER;
-                    } else {
-                        // pass the context to bodyLocal to be able to
-                        // continue body transferring once more data is available
-                        if (generator instanceof FeedableBodyGenerator) {
-                            ((FeedableBodyGenerator) generator).initializeAsynchronousTransfer(ctx, requestPacket);
-                            return false;
-                        } else {
-                            throw new IllegalStateException("BodyGenerator unexpectedly returned 0 bytes available");
-                        }
-                    }
+                    requestPacket.setChunked(true);
                 }
 
-                final HttpContent content =
-                        requestPacket.httpContentBuilder().content(buffer).
-                                last(last).build();
-                ctx.write(content, ((!requestPacket.isCommitted()) ? ctx.getTransportContext().getCompletionHandler() : null));
+                final MemoryManager mm = ctx.getMemoryManager();
+                boolean last = false;
+
+                while (!last) {
+                    Buffer buffer = mm.allocate(MAX_CHUNK_SIZE);
+                    buffer.allowBufferDispose(true);
+
+                    final long readBytes = bodyLocal.read(buffer.toByteBuffer());
+                    if (readBytes > 0) {
+                        buffer.position((int) readBytes);
+                        buffer.trim();
+                    } else {
+                        buffer.dispose();
+
+                        if (readBytes < 0) {
+                            last = true;
+                            buffer = Buffers.EMPTY_BUFFER;
+                        } else {
+                            // pass the context to bodyLocal to be able to
+                            // continue body transferring once more data is available
+                            if (generator instanceof FeedableBodyGenerator) {
+                                ((FeedableBodyGenerator) generator).initializeAsynchronousTransfer(ctx, requestPacket);
+                                return false;
+                            } else {
+                                throw new IllegalStateException("BodyGenerator unexpectedly returned 0 bytes available");
+                            }
+                        }
+                    }
+
+                    final HttpContent content =
+                            requestPacket.httpContentBuilder().content(buffer).
+                                    last(last).build();
+                    ctx.write(content, ((!requestPacket.isCommitted()) ? ctx.getTransportContext().getCompletionHandler() : null));
+                }
+
+                return true;
             }
-            
-            return true;
+            finally {
+                if (bodyLocal != null && ! ( generator instanceof  FeedableBodyGenerator)){
+                    bodyLocal.close();
+                }
+            }
         }
 
     } // END BodyGeneratorAdapter        
