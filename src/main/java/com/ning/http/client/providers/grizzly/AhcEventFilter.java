@@ -535,6 +535,14 @@ final class AhcEventFilter extends HttpClientFilter {
                             ntlmAuthenticate,
                             req, realm, false);
                     isContinueAuth = !Utils.isNtlmEstablished(connection);
+                    if (isContinueAuth)
+                    {
+                    	// In case the Type 3 message has to be sent, 
+                    	// this should be made in the same connection as the
+                    	// challenge (Type 2). Otherwise, the auth
+                    	// will fail in several in some implementations.
+                    	responsePacket.getProcessingState().setKeepAlive(true);
+                    }
                 } else {
                     // Request-based auth
                     isContinueAuth = false;
@@ -641,6 +649,11 @@ final class AhcEventFilter extends HttpClientFilter {
                     newRealm = ntlmProxyChallenge(ctx.getConnection(),
                             ntlmAuthenticate,
                             req, proxyServer);
+                	// In case the Type 3 message has to be sent, 
+                	// this should be made in the same connection as the
+                	// challenge (Type 2). Otherwise, the auth
+                	// will fail in several in some implementations.
+                	responsePacket.getProcessingState().setKeepAlive(true);                    
                 } else {
                     final String firstAuthHeader = proxyAuthHeaders.get(0);
                     
