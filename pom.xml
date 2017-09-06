@@ -10,7 +10,7 @@
     <artifactId>grizzly-http-client</artifactId>
     <packaging>jar</packaging>
     <name>Grizzly Async HTTP Client</name>
-    <version>1.13-SNAPHOT-SNAPSHOT</version>
+    <version>1.14</version>
     <description>
         The Grizzly Async Http Client library purpose is to allow Java applications to easily execute HTTP requests and
         asynchronously process the HTTP responses.
