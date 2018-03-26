@@ -69,7 +69,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class AsyncProvidersBasicTest extends AbstractBasicTest {
-    private static final String TEXT_HTML_UTF_8 = "text/html;charset=UTF-8";
+    private static final String TEXT_HTML_UTF_8 = "text/html;charset=utf-8";
 
     @Test(groups = { "standalone", "default_provider", "async" })
     public void asyncProviderEncodingTest() throws Throwable {

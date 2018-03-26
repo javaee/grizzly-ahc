@@ -53,12 +53,7 @@ public abstract class CloseCodeReasonMessageTest extends TextMessageTest {
 
             latch.await();
             final String[] parts = text.get().split(" ");
-            assertEquals(parts.length, 5);
-            assertEquals(parts[0], "1000-Idle");
-            assertEquals(parts[1], "for");
-            assertTrue(Integer.parseInt(parts[2].substring(0, parts[2].indexOf('m'))) > 10000);
-            assertEquals(parts[3], ">");
-            assertEquals(parts[4], "10000ms");
+            assertEquals(text.get(), "1001-Idle Timeout");
         }
     }
 

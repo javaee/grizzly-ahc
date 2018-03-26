@@ -22,13 +22,12 @@ import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
-import org.eclipse.jetty.continuation.Continuation;
-import org.eclipse.jetty.continuation.ContinuationSupport;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;
 
+import javax.servlet.AsyncContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -68,8 +67,7 @@ public abstract class AsyncStreamLifecycleTest extends AbstractBasicTest {
             public void handle(String s, Request request, HttpServletRequest req, final HttpServletResponse resp) throws IOException, ServletException {
                 resp.setContentType("text/plain;charset=utf-8");
                 resp.setStatus(200);
-                final Continuation continuation = ContinuationSupport.getContinuation(req);
-                continuation.suspend();
+                final AsyncContext continuation = req.startAsync();
                 final PrintWriter writer = resp.getWriter();
                 executorService.submit(new Runnable() {
                     public void run() {

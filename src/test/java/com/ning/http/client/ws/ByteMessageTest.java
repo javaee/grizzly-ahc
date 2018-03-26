@@ -16,58 +16,19 @@ package com.ning.http.client.ws;
 
 import static org.testng.Assert.assertEquals;
 
+import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.testng.annotations.Test;
 
 import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.ws.WebSocket;
-import com.ning.http.client.ws.WebSocketByteListener;
-import com.ning.http.client.ws.WebSocketUpgradeHandler;
 
-import javax.servlet.http.HttpServletRequest;
-
-import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class ByteMessageTest extends AbstractBasicTest {
 
-    private final class EchoByteWebSocket implements org.eclipse.jetty.websocket.WebSocket, org.eclipse.jetty.websocket.WebSocket.OnBinaryMessage {
-
-        private Connection connection;
-
-        @Override
-        public void onOpen(Connection connection) {
-            this.connection = connection;
-            connection.setMaxBinaryMessageSize(1000);
-        }
-
-        @Override
-        public void onClose(int i, String s) {
-            connection.close();
-        }
-
-        @Override
-        public void onMessage(byte[] bytes, int i, int i1) {
-            try {
-                connection.sendMessage(bytes, i, i1);
-            } catch (IOException e) {
-                try {
-                    connection.sendMessage("FAIL");
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                }
-            }
-        }
-    }
-
     @Override
-    public WebSocketHandler getWebSocketHandler() {
-        return new WebSocketHandler() {
-            @Override
-            public org.eclipse.jetty.websocket.WebSocket doWebSocketConnect(HttpServletRequest httpServletRequest, String s) {
-                return new EchoByteWebSocket();
-            }
-        };
+    public WebSocketServlet getWebSocketHandler() {
+        return new EchoByteWebSocketServlet();
     }
 
     @Test

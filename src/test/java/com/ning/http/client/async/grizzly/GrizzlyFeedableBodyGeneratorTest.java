@@ -350,7 +350,7 @@ public class GrizzlyFeedableBodyGeneratorTest {
         }
 
         return new SSLEngineConfigurator(
-                sslContextConfigurator.createSSLContext(),
+                sslContextConfigurator.createSSLContext(false),
                 false, false, false);
     }
 

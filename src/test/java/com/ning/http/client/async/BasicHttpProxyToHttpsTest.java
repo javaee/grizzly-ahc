@@ -39,13 +39,18 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.http.HttpVersion;
+import org.eclipse.jetty.proxy.ConnectHandler;
 import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.handler.ConnectHandler;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
-import org.eclipse.jetty.server.ssl.SslSocketConnector;
+import org.eclipse.jetty.server.handler.HandlerWrapper;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
@@ -91,7 +96,7 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
         port2 = findFreePort();
 
         // Proxy Server configuration
-        Connector listener = new SelectChannelConnector();
+        ServerConnector listener = new ServerConnector(server);
         listener.setHost("127.0.0.1");
         listener.setPort(port1);
         server.addConnector(listener);
@@ -99,21 +104,38 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
         server.start();
 
         // HTTPS Server
-        SslSocketConnector connector = new SslSocketConnector();
-        connector.setHost("127.0.0.1");
-        connector.setPort(port2);
+        HttpConfiguration https_config = new HttpConfiguration();
+        https_config.setSecureScheme("https");
+        https_config.setSecurePort(port2);
+        https_config.setOutputBufferSize(32768);
+        SecureRequestCustomizer src = new SecureRequestCustomizer();
+        src.setStsMaxAge(2000);
+        src.setStsIncludeSubDomains(true);
+        https_config.addCustomizer(src);
 
+        SslContextFactory sslContextFactory = new SslContextFactory();
         ClassLoader cl = getClass().getClassLoader();
+        URL cacertsUrl = cl.getResource("ssltest-cacerts.jks");
+        String trustStoreFile = new File(cacertsUrl.toURI()).getAbsolutePath();
+        sslContextFactory.setTrustStorePath(trustStoreFile);
+        sslContextFactory.setTrustStorePassword("changeit");
+        sslContextFactory.setTrustStoreType("JKS");
 
-        // override system properties
+        log.info("SSL certs path: {}", trustStoreFile);
+
         URL keystoreUrl = cl.getResource("ssltest-keystore.jks");
         String keyStoreFile = new File(keystoreUrl.toURI()).getAbsolutePath();
-        connector.setKeystore(keyStoreFile);
-        connector.setKeyPassword("changeit");
-        connector.setKeystoreType("JKS");
+        sslContextFactory.setKeyStorePath(keyStoreFile);
+        sslContextFactory.setKeyStorePassword("changeit");
+        sslContextFactory.setKeyStoreType("JKS");
 
         log.info("SSL keystore path: {}", keyStoreFile);
 
+        ServerConnector connector = new ServerConnector(server2,
+                new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
+                new HttpConnectionFactory(https_config));
+        connector.setHost("127.0.0.1");
+        connector.setPort(port2);
         server2.addConnector(connector);
         server2.setHandler(new AuthenticateHandler(new EchoHandler()));
         server2.start();
@@ -168,7 +190,7 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
         }
 
         @Override
-        protected boolean handleAuthentication(HttpServletRequest request, HttpServletResponse response, String address) throws ServletException, IOException
+        protected boolean handleAuthentication(HttpServletRequest request, HttpServletResponse response, String address)
         {
             return true;
         }
@@ -178,10 +200,18 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
          * {@link HttpServletResponse#SC_PROXY_AUTHENTICATION_REQUIRED} neither {@link HttpServletResponse#SC_UNAUTHORIZED}.
          */
         @Override
-        protected void handleConnect(org.eclipse.jetty.server.Request baseRequest, HttpServletRequest request, HttpServletResponse response, String serverAddress) throws ServletException, IOException
+        protected void handleConnect(org.eclipse.jetty.server.Request baseRequest, HttpServletRequest request, HttpServletResponse response, String serverAddress)
         {
-            if (!this.doHandleAuthentication(baseRequest, response)) {
-                return;
+            try {
+                if (!this.doHandleAuthentication(baseRequest, response)) {
+                    return;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            } catch (ServletException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
             }
             // Just call super class method to establish the tunnel and avoid copy/paste.
             super.handleConnect(baseRequest, request, response, serverAddress);
@@ -195,9 +225,11 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
                     httpResponse.setStatus(HttpServletResponse.SC_PROXY_AUTHENTICATION_REQUIRED);
                     httpResponse.setHeader("Proxy-Authenticate", "Basic realm=\"Fake Realm\"");
                     result = false;
+                    httpResponse.getOutputStream().flush();
+                    httpResponse.getOutputStream().close();
                 } else if (authorization
                     .equals("Basic am9obmRvZTpwYXNz")) {
-                    httpResponse.setStatus(HttpServletResponse.SC_OK, "Connection established");
+                    httpResponse.setStatus(HttpServletResponse.SC_OK);
                     result = true;
                 } else {
                     httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -205,15 +237,13 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
                     httpResponse.getOutputStream().close();
                     result = false;
                 }
-                httpResponse.getOutputStream().flush();
-                httpResponse.getOutputStream().close();
                 request.setHandled(true);
             }
             return result;
         }
     }
 
-    private static class AuthenticateHandler extends AbstractHandler {
+    private static class AuthenticateHandler extends HandlerWrapper {
 
         private Handler target;
 
@@ -227,7 +257,7 @@ public abstract class BasicHttpProxyToHttpsTest extends AbstractBasicTest {
             String authorization = httpRequest.getHeader("Authorization");
             if (authorization != null && authorization.equals("Basic dXNlcjpwYXNzd2Q="))
             {
-                httpResponse.addHeader("target", request.getUri().toString());
+                httpResponse.addHeader("target", request.getHttpURI().getPath());
                 target.handle(pathInContext, request, httpRequest, httpResponse);
             }
             else

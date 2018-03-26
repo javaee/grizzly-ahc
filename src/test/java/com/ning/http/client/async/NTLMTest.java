@@ -16,6 +16,7 @@
 package com.ning.http.client.async;
 
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.server.handler.HandlerWrapper;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -38,7 +39,7 @@ import java.util.concurrent.Future;
 
 public abstract class NTLMTest extends AbstractBasicTest {
 
-    public static class NTLMHandler extends AbstractHandler {
+    public static class NTLMHandler extends HandlerWrapper {
 
         @Override
         public void handle(String pathInContext, org.eclipse.jetty.server.Request request, HttpServletRequest httpRequest,
