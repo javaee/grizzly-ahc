@@ -35,9 +35,15 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.http.HttpVersion;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.ssl.SslSocketConnector;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -49,24 +55,35 @@ public abstract class ConnectionCloseTest extends AbstractBasicTest {
     public void setUpGlobal() throws Exception {
         server = new Server();
         port1 = findFreePort();
-        SslSocketConnector connector = new SslSocketConnector();
-        connector.setHost("127.0.0.1");
-        connector.setPort(port1);
 
+        SslContextFactory sslContextFactory = new SslContextFactory();
         ClassLoader cl = getClass().getClassLoader();
 
         URL cacertsUrl = cl.getResource("ssltest-cacerts.jks");
         String trustStoreFile = new File(cacertsUrl.toURI()).getAbsolutePath();
-        connector.setTruststore(trustStoreFile);
-        connector.setTrustPassword("changeit");
-        connector.setTruststoreType("JKS");
+        sslContextFactory.setTrustStorePath(trustStoreFile);
+        sslContextFactory.setTrustStorePassword("changeit");
+        sslContextFactory.setTrustStoreType("JKS");
 
         URL keystoreUrl = cl.getResource("ssltest-keystore.jks");
         String keyStoreFile = new File(keystoreUrl.toURI()).getAbsolutePath();
-        connector.setKeystore(keyStoreFile);
-        connector.setKeyPassword("changeit");
-        connector.setKeystoreType("JKS");
+        sslContextFactory.setKeyStorePath(keyStoreFile);
+        sslContextFactory.setKeyStorePassword("changeit");
+        sslContextFactory.setKeyStoreType("JKS");
 
+        HttpConfiguration https_config = new HttpConfiguration();
+        https_config.setSecureScheme("https");
+        https_config.setSecurePort(port1);
+        https_config.setOutputBufferSize(32768);
+        SecureRequestCustomizer src = new SecureRequestCustomizer();
+        src.setStsMaxAge(2000);
+        src.setStsIncludeSubDomains(true);
+        https_config.addCustomizer(src);
+        ServerConnector connector = new ServerConnector(server,
+                new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
+                    new HttpConnectionFactory(https_config));
+        connector.setHost("127.0.0.1");
+        connector.setPort(port1);
         server.addConnector(connector);
 
         server.setHandler(configureHandler());

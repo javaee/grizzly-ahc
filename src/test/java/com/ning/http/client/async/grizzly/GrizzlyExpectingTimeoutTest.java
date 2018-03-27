@@ -20,12 +20,11 @@ import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.Response;
 import com.ning.http.client.async.AbstractBasicTest;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
-import org.eclipse.jetty.continuation.Continuation;
-import org.eclipse.jetty.continuation.ContinuationSupport;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.testng.annotations.Test;
 
+import javax.servlet.AsyncContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -64,8 +63,7 @@ public class GrizzlyExpectingTimeoutTest extends AbstractBasicTest {
     private class ExpectExceptionHandler extends AbstractHandler {
         public void handle(String target, Request baseRequest, HttpServletRequest request, final HttpServletResponse response) throws IOException, ServletException {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            final Continuation continuation = ContinuationSupport.getContinuation(request);
-            continuation.suspend();
+            final AsyncContext continuation = request.startAsync();
             new Thread(new Runnable() {
                 public void run() {
                     try {

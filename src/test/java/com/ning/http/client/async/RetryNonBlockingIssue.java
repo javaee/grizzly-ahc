@@ -19,9 +19,8 @@ import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.ListenableFuture;
 import com.ning.http.client.RequestBuilder;
 import com.ning.http.client.Response;
-import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.testng.annotations.AfterMethod;
@@ -67,7 +66,7 @@ public class RetryNonBlockingIssue {
 
         port1 = findFreePort();
 
-        Connector listener = new SelectChannelConnector();
+        ServerConnector listener = new ServerConnector(server);
         listener.setHost("127.0.0.1");
         listener.setPort(port1);
 

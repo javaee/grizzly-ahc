@@ -26,11 +26,11 @@ import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.Response;
 
-import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.eclipse.jetty.server.handler.HandlerWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -47,7 +47,7 @@ import java.util.Enumeration;
 
 public abstract class AbstractBasicTest {
     
-    public final static String TEXT_HTML_CONTENT_TYPE_WITH_UTF_8_CHARSET = "text/html; charset=UTF-8";
+    public final static String TEXT_HTML_CONTENT_TYPE_WITH_UTF_8_CHARSET = "text/html; charset=utf-8";
     
     protected final Logger log = LoggerFactory.getLogger(AbstractBasicTest.class);
     protected Server server;
@@ -56,7 +56,7 @@ public abstract class AbstractBasicTest {
 
     public final static int TIMEOUT = 30;
 
-    public static class EchoHandler extends AbstractHandler {
+    public static class EchoHandler extends HandlerWrapper {
 
         @Override
         public void handle(String pathInContext,
@@ -183,15 +183,14 @@ public abstract class AbstractBasicTest {
 
         port1 = findFreePort();
         port2 = findFreePort();
-
-        Connector listener = new SelectChannelConnector();
+        ServerConnector listener = new ServerConnector(server);
 
         listener.setHost("127.0.0.1");
         listener.setPort(port1);
 
         server.addConnector(listener);
 
-        listener = new SelectChannelConnector();
+        listener = new ServerConnector(server);
         listener.setHost("127.0.0.1");
         listener.setPort(port2);
 

@@ -18,13 +18,11 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
+import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.testng.annotations.Test;
 
 import com.ning.http.client.AsyncHttpClient;
 
-import javax.servlet.http.HttpServletRequest;
-
-import java.io.IOException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.nio.channels.UnresolvedAddressException;
@@ -34,46 +32,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class TextMessageTest extends AbstractBasicTest {
 
-    public static final class EchoTextWebSocket implements org.eclipse.jetty.websocket.WebSocket, org.eclipse.jetty.websocket.WebSocket.OnTextMessage {
-
-        private Connection connection;
-
-        @Override
-        public void onOpen(Connection connection) {
-            this.connection = connection;
-            connection.setMaxTextMessageSize(1000);
-        }
-
-        @Override
-        public void onClose(int i, String s) {
-            connection.close();
-        }
-
-        @Override
-        public void onMessage(String s) {
-            try {
-                if (s.equals("CLOSE"))
-                    connection.close();
-                else
-                    connection.sendMessage(s);
-            } catch (IOException e) {
-                try {
-                    connection.sendMessage("FAIL");
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                }
-            }
-        }
-    }
-
     @Override
-    public WebSocketHandler getWebSocketHandler() {
-        return new WebSocketHandler() {
-            @Override
-            public org.eclipse.jetty.websocket.WebSocket doWebSocketConnect(HttpServletRequest httpServletRequest, String s) {
-                return new EchoTextWebSocket();
-            }
-        };
+    public WebSocketServlet getWebSocketHandler() {
+        return new EchoTextWebSocketServlet();
     }
 
     @Test(timeOut = 60000)

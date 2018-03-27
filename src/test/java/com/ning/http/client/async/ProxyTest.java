@@ -40,6 +40,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.server.handler.HandlerWrapper;
 import org.testng.annotations.Test;
 
 /**
@@ -48,10 +49,10 @@ import org.testng.annotations.Test;
  * @author Hubert Iwaniuk
  */
 public abstract class ProxyTest extends AbstractBasicTest {
-    private class ProxyHandler extends AbstractHandler {
+    private class ProxyHandler extends HandlerWrapper {
         public void handle(String s, Request r, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
             if ("GET".equalsIgnoreCase(request.getMethod())) {
-                response.addHeader("target", r.getUri().getPath());
+                response.addHeader("target", r.getHttpURI().getPath());
                 response.setStatus(HttpServletResponse.SC_OK);
             } else { // this handler is to handle POST request
                 response.sendError(HttpServletResponse.SC_FORBIDDEN);

@@ -16,23 +16,24 @@ package com.ning.http.client.ws;
 
 import static org.testng.Assert.assertEquals;
 
-import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.http.HttpVersion;
+import org.eclipse.jetty.proxy.ConnectHandler;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.handler.ConnectHandler;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
-import org.eclipse.jetty.server.ssl.SslSelectChannelConnector;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SslConnectionFactory;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
+import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.ProxyServer;
-import com.ning.http.client.ws.WebSocket;
-import com.ning.http.client.ws.WebSocketTextListener;
-import com.ning.http.client.ws.WebSocketUpgradeHandler;
-import com.ning.http.client.ws.TextMessageTest.EchoTextWebSocket;
-
-import javax.servlet.http.HttpServletRequest;
 
 import java.io.File;
 import java.net.URL;
@@ -47,56 +48,81 @@ public abstract class ProxyTunnellingTest extends AbstractBasicTest {
     int port2;
     private Server server2;
 
-    public void setUpGlobal() throws Exception {
+    public void setUpGlobal() {
     }
 
-    private void setUpServers(Connector server2Connector) throws Exception {
+    private void setUpServers(ServerConnector server2Connector) throws Exception {
 
         port1 = findFreePort();
         port2 = findFreePort();
-        Connector listener = new SelectChannelConnector();
+        ServerConnector listener = new ServerConnector(getServer());
         listener.setHost("127.0.0.1");
         listener.setPort(port1);
         addConnector(listener);
         setHandler(new ConnectHandler());
         start();
 
-        server2 = new Server();
-
         server2Connector.setHost("127.0.0.1");
         server2Connector.setPort(port2);
 
         server2.addConnector(server2Connector);
 
-        server2.setHandler(getWebSocketHandler());
+        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        context.setContextPath("/");
+        server2.setHandler(context);
+        ServletHolder echo = new ServletHolder(getWebSocketHandler());
+        context.addServlet(echo, "/*");
         server2.start();
         log.info("Local HTTP server started successfully");
 
     }
 
     private void setUpServer() throws Exception {
-        setUpServers(new SelectChannelConnector());
+        server2 = new Server();
+        setUpServers(new ServerConnector(server2));
     }
 
     private void setUpSSlServer2() throws Exception {
-        SslSelectChannelConnector connector = new SslSelectChannelConnector();
+        server2 = new Server();
+        HttpConfiguration https_config = new HttpConfiguration();
+        https_config.setSecureScheme("https");
+        https_config.setSecurePort(port2);
+        https_config.setOutputBufferSize(32768);
+
+        SecureRequestCustomizer src = new SecureRequestCustomizer();
+        src.setStsMaxAge(2000);
+        src.setStsIncludeSubDomains(true);
+        https_config.addCustomizer(src);
+
+        SslContextFactory sslContextFactory = new SslContextFactory();
         ClassLoader cl = getClass().getClassLoader();
+        URL cacertsUrl = cl.getResource("ssltest-cacerts.jks");
+        String trustStoreFile = new File(cacertsUrl.toURI()).getAbsolutePath();
+        sslContextFactory.setTrustStorePath(trustStoreFile);
+        sslContextFactory.setTrustStorePassword("changeit");
+        sslContextFactory.setTrustStoreType("JKS");
+
+        log.info("SSL certs path: {}", trustStoreFile);
+
         URL keystoreUrl = cl.getResource("ssltest-keystore.jks");
         String keyStoreFile = new File(keystoreUrl.toURI()).getAbsolutePath();
-        connector.setKeystore(keyStoreFile);
-        connector.setKeyPassword("changeit");
-        connector.setKeystoreType("JKS");
-        setUpServers(connector);
+        sslContextFactory.setKeyStorePath(keyStoreFile);
+        sslContextFactory.setKeyStorePassword("changeit");
+        sslContextFactory.setKeyStoreType("JKS");
+
+        log.info("SSL keystore path: {}", trustStoreFile);
+
+        ServerConnector https_connector = new ServerConnector(server2,
+                new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
+                new HttpConnectionFactory(https_config));
+        https_connector.setPort(port2);
+        https_connector.setIdleTimeout(500000);
+        setUpServers(https_connector);
     }
 
     @Override
-    public WebSocketHandler getWebSocketHandler() {
-        return new WebSocketHandler() {
-            @Override
-            public org.eclipse.jetty.websocket.WebSocket doWebSocketConnect(HttpServletRequest httpServletRequest, String s) {
-                return new EchoTextWebSocket();
-            }
-        };
+    public WebSocketServlet getWebSocketHandler() {
+        return new EchoTextWebSocketServlet();
     }
     
     @AfterMethod(alwaysRun = true)

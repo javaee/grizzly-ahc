@@ -23,11 +23,10 @@ import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
-import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -76,7 +75,7 @@ public abstract class RC10KTest extends AbstractBasicTest {
 
     private int createServer() throws Exception {
         Server srv = new Server();
-        Connector listener = new SelectChannelConnector();
+        ServerConnector listener = new ServerConnector(srv);
         listener.setHost("127.0.0.1");
         int port = findFreePort();
         listener.setPort(port);

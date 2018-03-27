@@ -25,17 +25,17 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.HandlerList;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.eclipse.jetty.server.handler.HandlerWrapper;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
-import com.ning.http.client.ws.WebSocket;
-import com.ning.http.client.ws.WebSocketListener;
-import com.ning.http.client.ws.WebSocketUpgradeHandler;
 
 public abstract class RedirectTest extends AbstractBasicTest {
 
@@ -48,18 +48,18 @@ public abstract class RedirectTest extends AbstractBasicTest {
     public void setUpGlobal() throws Exception {
         port1 = findFreePort();
 
-        _connector = new SelectChannelConnector();
+        _connector = new ServerConnector(getServer());
         _connector.setPort(port1);
 
         addConnector(_connector);
 
         port2 = findFreePort();
-        final SelectChannelConnector connector2 = new SelectChannelConnector();
+        final ServerConnector connector2 = new ServerConnector(getServer());
         connector2.setPort(port2);
         addConnector(connector2);
-        WebSocketHandler _wsHandler = getWebSocketHandler();
+        WebSocketServlet _wsHandler = getWebSocketHandler();
         HandlerList list = new HandlerList();
-        list.addHandler(new AbstractHandler() {
+        list.addHandler(new HandlerWrapper() {
             @Override
             public void handle(String s, Request request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException, ServletException {
                 if (request.getLocalPort() == port2) {
@@ -67,7 +67,12 @@ public abstract class RedirectTest extends AbstractBasicTest {
                 }
             }
         });
-        list.addHandler(_wsHandler);
+
+        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        context.setContextPath("/");
+        ServletHolder echo = new ServletHolder(_wsHandler);
+        context.addServlet(echo, "/*");
+        list.addHandler(context);
         setHandler(list);
 
         start();
@@ -75,13 +80,8 @@ public abstract class RedirectTest extends AbstractBasicTest {
     }
 
     @Override
-    public WebSocketHandler getWebSocketHandler() {
-        return new WebSocketHandler() {
-            @Override
-            public org.eclipse.jetty.websocket.WebSocket doWebSocketConnect(HttpServletRequest httpServletRequest, String s) {
-                return new TextMessageTest.EchoTextWebSocket();
-            }
-        };
+    public WebSocketServlet getWebSocketHandler() {
+        return new EchoTextWebSocketServlet();
     }
 
     // ------------------------------------------------------------ Test Methods

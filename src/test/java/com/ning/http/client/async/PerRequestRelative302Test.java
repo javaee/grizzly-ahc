@@ -22,11 +22,10 @@ import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.Response;
 import com.ning.http.client.uri.Uri;
 
-import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.handler.HandlerWrapper;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -49,7 +48,7 @@ public abstract class PerRequestRelative302Test extends AbstractBasicTest {
     // FIXME super NOT threadsafe!!!
     private final AtomicBoolean isSet = new AtomicBoolean(false);
 
-    private class Relative302Handler extends AbstractHandler {
+    private class Relative302Handler extends HandlerWrapper {
 
         public void handle(String s, Request r, HttpServletRequest httpRequest, HttpServletResponse httpResponse) throws IOException, ServletException {
 
@@ -80,7 +79,7 @@ public abstract class PerRequestRelative302Test extends AbstractBasicTest {
         port1 = findFreePort();
         port2 = findFreePort();
 
-        Connector listener = new SelectChannelConnector();
+        ServerConnector listener = new ServerConnector(server);
 
         listener.setHost("127.0.0.1");
         listener.setPort(port1);
@@ -96,15 +95,15 @@ public abstract class PerRequestRelative302Test extends AbstractBasicTest {
         isSet.getAndSet(false);
         try (AsyncHttpClient client = getAsyncHttpClient(null)) {
             // once
-            Response response = client.prepareGet(getTargetUrl()).setFollowRedirects(true).setHeader("X-redirect", "http://www.microsoft.com/").execute().get();
+            Response response = client.prepareGet(getTargetUrl()).setFollowRedirects(true).setHeader("X-redirect", "http://www.stackoverflow.com/").execute().get();
 
             assertNotNull(response);
             assertEquals(response.getStatusCode(), 200);
 
-            String anyMicrosoftPage = "https://www.microsoft.com[^:]*:443";
+            String anyWebPage = "https://(www.)?stackoverflow.com[^:]*:443";
             String baseUrl = getBaseUrl(response.getUri());
 
-            assertTrue(baseUrl.matches(anyMicrosoftPage), "response does not show redirection to " + anyMicrosoftPage);
+            assertTrue(baseUrl.matches(anyWebPage), "response baseUrl \'" + baseUrl +"\' does not show redirection to " + anyWebPage);
         }
     }
 

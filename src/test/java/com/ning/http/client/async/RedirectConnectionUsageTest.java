@@ -23,9 +23,9 @@ import com.ning.http.client.AsyncHttpProviderConfig;
 import com.ning.http.client.ListenableFuture;
 import com.ning.http.client.RequestBuilder;
 import com.ning.http.client.Response;
-import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.testng.annotations.AfterClass;
@@ -63,7 +63,7 @@ public abstract class RedirectConnectionUsageTest extends AbstractBasicTest{
 
         port1 = findFreePort();
 
-        Connector listener = new SelectChannelConnector();
+        ServerConnector listener = new ServerConnector(server);
         listener.setHost("localhost");
         listener.setPort(port1);
 
@@ -155,10 +155,10 @@ public abstract class RedirectConnectionUsageTest extends AbstractBasicTest{
         private static final String contentType = "text/xml";
         private static final String xml = "<?xml version=\"1.0\"?><hello date=\"%s\"></hello>";
 
-        public void service(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+        public void service(HttpServletRequest req, HttpServletResponse res) throws IOException {
             String xmlToReturn = String.format(xml, new Object[]{new Date().toString()});
 
-            res.setStatus(200, "Complete, XML Being Returned");
+            res.setStatus(HttpStatus.OK_200);
             res.addHeader("Content-Type", contentType);
             res.addHeader("X-Method", req.getMethod());
             res.addHeader("MultiValue", "1");

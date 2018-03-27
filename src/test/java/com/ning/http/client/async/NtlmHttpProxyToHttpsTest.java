@@ -30,17 +30,25 @@ import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.http.HttpMethod;
+import org.eclipse.jetty.http.HttpStatus;
+import org.eclipse.jetty.http.HttpVersion;
+import org.eclipse.jetty.proxy.ConnectHandler;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.handler.ConnectHandler;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
-import org.eclipse.jetty.server.ssl.SslSocketConnector;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -66,7 +74,7 @@ public abstract class NtlmHttpProxyToHttpsTest extends AbstractBasicTest {
     port2 = findFreePort();
 
     // Proxy Server configuration
-    Connector listener = new SelectChannelConnector();
+    ServerConnector listener = new ServerConnector(server);
     listener.setHost("127.0.0.1");
     listener.setPort(port1);
     server.addConnector(listener);
@@ -74,19 +82,39 @@ public abstract class NtlmHttpProxyToHttpsTest extends AbstractBasicTest {
     server.start();
 
     // HTTPS Server
-    SslSocketConnector connector = new SslSocketConnector();
-    connector.setHost("127.0.0.1");
-    connector.setPort(port2);
+    HttpConfiguration https_config = new HttpConfiguration();
+    https_config.setSecureScheme("https");
+    https_config.setSecurePort(port2);
+    https_config.setOutputBufferSize(32768);
+
+    SecureRequestCustomizer src = new SecureRequestCustomizer();
+    src.setStsMaxAge(2000);
+    src.setStsIncludeSubDomains(true);
+    https_config.addCustomizer(src);
 
     ClassLoader cl = getClass().getClassLoader();
-    // override system properties
+    SslContextFactory sslContextFactory = new SslContextFactory();
+    URL cacertsUrl = cl.getResource("ssltest-cacerts.jks");
+    String trustStoreFile = new File(cacertsUrl.toURI()).getAbsolutePath();
+    sslContextFactory.setTrustStorePath(trustStoreFile);
+    sslContextFactory.setTrustStorePassword("changeit");
+    sslContextFactory.setTrustStoreType("JKS");
+
+    log.info("SSL certs path: {}", trustStoreFile);
+
     URL keystoreUrl = cl.getResource("ssltest-keystore.jks");
     String keyStoreFile = new File(keystoreUrl.toURI()).getAbsolutePath();
-    connector.setKeystore(keyStoreFile);
-    connector.setKeyPassword("changeit");
-    connector.setKeystoreType("JKS");
+    sslContextFactory.setKeyStorePath(keyStoreFile);
+    sslContextFactory.setKeyStorePassword("changeit");
+    sslContextFactory.setKeyStoreType("JKS");
 
     log.info("SSL keystore path: {}", keyStoreFile);
+
+    ServerConnector connector = new ServerConnector(server2,
+            new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
+                new HttpConnectionFactory(https_config));
+    connector.setHost("127.0.0.1");
+    connector.setPort(port2);
 
     server2.addConnector(connector);
     server2.setHandler(new EchoHandler());
@@ -97,43 +125,49 @@ public abstract class NtlmHttpProxyToHttpsTest extends AbstractBasicTest {
   @Override
   public AbstractHandler configureHandler() throws Exception {
     return new ConnectHandler(new EchoHandler()) {
-
-      boolean authenticated = false;
-
+      AtomicInteger state = new AtomicInteger(1);
+      AtomicBoolean authComplete = new AtomicBoolean(false);
       @Override
-      protected void handleConnect(org.eclipse.jetty.server.Request baseRequest, HttpServletRequest request,
-                                             HttpServletResponse response,
-                                             String serverAddress) throws ServletException, IOException {
-        super.handleConnect(baseRequest, request, response, serverAddress);
-        if (!authenticated) {
-          response.getOutputStream().flush();
-        }
-      }
+      public void handle(String pathInContext, org.eclipse.jetty.server.Request request,
+                         HttpServletRequest httpRequest, HttpServletResponse httpResponse)
+              throws IOException,ServletException {
 
-      @Override
-      protected boolean handleAuthentication(HttpServletRequest request, HttpServletResponse response, String address) throws
-        ServletException, IOException {
-        String authorization = request.getHeader("Proxy-Authorization");
-        response.setHeader("Content-Length", "0");
-        response.setHeader("Connection", "keep-alive");
-        if (authorization == null) {
-          response.setStatus(407);
-          response.setHeader("Proxy-Authenticate", "NTLM");
-          return false;
-        } else if (authorization.equals("NTLM TlRMTVNTUAABAAAAAYIIogAAAAAoAAAAAAAAACgAAAAFASgKAAAADw==")) {
-          response.setStatus(407);
-          response.setHeader("Proxy-Authenticate", "NTLM TlRMTVNTUAACAAAAAAAAACgAAAABggAAU3J2Tm9uY2UAAAAAAAAAAA==");
-          return false;
-        } else if (authorization
-          .equals(
-            "NTLM TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAABQAFAB4AAAADAAMAIwAAAASABIAmAAAAAAAAACqAAAAAYIAAgUBKAoAAAAPrYfKbe/jRoW5xDxHeoxC1gBmfWiS5+iX4OAN4xBKG/IFPwfH3agtPEia6YnhsADTVQBSAFMAQQAtAE0ASQBOAE8AUgBaAGEAcABoAG8AZABMAGkAZwBoAHQAQwBpAHQAeQA=")) {
-          response.setStatus(200);
-          authenticated = true;
-          return true;
-        } else {
-          response.setStatus(401);
-          return false;
+        String authorization = httpRequest.getHeader("Proxy-Authorization");
+
+        boolean asExpected = false;
+
+        switch (state.getAndIncrement()) {
+
+          case 1:
+            if (authorization.equals("NTLM TlRMTVNTUAABAAAAAYIIogAAAAAoAAAAAAAAACgAAAAFASgKAAAADw==")) {
+              httpResponse.setStatus(HttpStatus.PROXY_AUTHENTICATION_REQUIRED_407);
+              httpResponse.setHeader("Proxy-Authenticate", "NTLM TlRMTVNTUAACAAAAAAAAACgAAAABggAAU3J2Tm9uY2UAAAAAAAAAAA==");
+              asExpected = true;
+
+            }
+            break;
+
+          case 2:
+            if (authorization
+                    .equals("NTLM TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAABQAFAB4AAAADAAMAIwAAAASABIAmAAAAAAAAACqAAAAAYIAAgUBKAoAAAAPrYfKbe/jRoW5xDxHeoxC1gBmfWiS5+iX4OAN4xBKG/IFPwfH3agtPEia6YnhsADTVQBSAFMAQQAtAE0ASQBOAE8AUgBaAGEAcABoAG8AZABMAGkAZwBoAHQAQwBpAHQAeQA=")) {
+              httpResponse.setStatus(HttpStatus.OK_200);
+              super.handleConnect(request,httpRequest,httpResponse,request.getRequestURI());
+              asExpected = true;
+              authComplete.getAndSet(true);
+            }
+            break;
+          default:
         }
+
+        if (!asExpected) {
+          httpResponse.setStatus(HttpStatus.FORBIDDEN_403);
+        }
+        if (authComplete.get() && HttpMethod.GET.is(httpRequest.getMethod())) {
+          super.handle(pathInContext,request,httpRequest,httpResponse);
+        }
+        httpResponse.setContentLength(0);
+        httpResponse.getOutputStream().flush();
+        httpResponse.getOutputStream().close();
       }
     };
   }

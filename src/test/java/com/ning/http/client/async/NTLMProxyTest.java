@@ -33,12 +33,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.server.handler.HandlerWrapper;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public abstract class NTLMProxyTest extends AbstractBasicTest {
 
-    public static class NTLMProxyHandler extends AbstractHandler {
+    public static class NTLMProxyHandler extends HandlerWrapper {
 
         @Override
         public void handle(String pathInContext, org.eclipse.jetty.server.Request request, HttpServletRequest httpRequest,

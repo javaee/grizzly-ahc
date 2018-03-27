@@ -24,12 +24,12 @@ import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.Response;
-import org.eclipse.jetty.continuation.Continuation;
-import org.eclipse.jetty.continuation.ContinuationSupport;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.server.handler.HandlerWrapper;
 import org.testng.annotations.Test;
 
+import javax.servlet.AsyncContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -60,11 +60,10 @@ public abstract class PerRequestTimeoutTest extends AbstractBasicTest {
         return new SlowHandler();
     }
 
-    private class SlowHandler extends AbstractHandler {
+    private class SlowHandler extends HandlerWrapper {
         public void handle(String target, Request baseRequest, HttpServletRequest request, final HttpServletResponse response) throws IOException, ServletException {
             response.setStatus(HttpServletResponse.SC_OK);
-            final Continuation continuation = ContinuationSupport.getContinuation(request);
-            continuation.suspend();
+            final AsyncContext continuation = request.startAsync();
             new Thread(new Runnable() {
                 public void run() {
                     try {

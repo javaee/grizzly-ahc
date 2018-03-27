@@ -34,10 +34,9 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -64,7 +63,7 @@ public abstract class BasicHttpProxyToHttpTest extends AbstractBasicTest {
                 httpResponse.setHeader("Proxy-Authenticate", "Basic realm=\"Fake Realm\"");
             } else if (proxyAuthorization
                 .equals("Basic am9obmRvZTpwYXNz") && authorization != null && authorization.equals("Basic dXNlcjpwYXNzd2Q=")) {
-                httpResponse.addHeader("target", request.getUri().toString());
+                httpResponse.addHeader("target", request.getHttpURI().getPath());
                 httpResponse.setStatus(HttpServletResponse.SC_OK);
             } else {
                 httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -93,7 +92,7 @@ public abstract class BasicHttpProxyToHttpTest extends AbstractBasicTest {
         port2 = findFreePort();
 
         // HTTP Server
-        Connector listener = new SelectChannelConnector();
+        ServerConnector listener = new ServerConnector(server);
 
         listener.setHost("127.0.0.1");
         listener.setPort(port1);
@@ -101,7 +100,7 @@ public abstract class BasicHttpProxyToHttpTest extends AbstractBasicTest {
         server.setHandler(new EchoHandler());
         server.start();
 
-        listener = new SelectChannelConnector();
+        listener = new ServerConnector(server2);
 
         // Proxy Server configuration
         listener.setHost("127.0.0.1");
@@ -136,7 +135,7 @@ public abstract class BasicHttpProxyToHttpTest extends AbstractBasicTest {
             Future<Response> responseFuture = client.executeRequest(request);
             Response response = responseFuture.get();
             Assert.assertEquals(response.getStatusCode(), HttpServletResponse.SC_OK);
-            Assert.assertEquals(getTargetUrl(), response.getHeader("target"));
+            Assert.assertTrue(getTargetUrl().endsWith(response.getHeader("target")));
         }
     }
 
